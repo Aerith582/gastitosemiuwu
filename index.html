@@ -188,7 +188,7 @@
   .budget-cat-icon:active { transform:scale(0.85); }
   .budget-cat-name-input { flex:1; background:transparent; border:none; color:var(--text); font-family:'Marope',sans-serif; font-size:13px; font-weight:600; outline:none; padding:2px 4px; border-radius:4px; transition:background 0.15s; min-width:0; }
   .budget-cat-name-input:focus { background:var(--surface2); }
-  .budget-cat-amount-input { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--gold); font-family:'DM Mono',monospace; font-size:12px; padding:7px 10px; width:108px; outline:none; text-align:right; }
+  .budget-cat-amount-input { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--gold); font-family:'DM Mono',monospace; font-size:12px; padding:7px 10px; width:108px; outline:none; text-align:right; flex-shrink:0; }
   .budget-cat-amount-input:focus { border-color:var(--gold-dim); }
   .budget-cat-del { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:4px; flex-shrink:0; transition:color 0.15s; line-height:1; }
   .budget-cat-del:active { color:var(--red); }
@@ -336,6 +336,18 @@
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--muted2); border-radius: 2px; }
 
+
+  .fijo-cat-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-top: 2px;
+    display: inline-block;
+  }
 </style>
 </head>
 <body>
@@ -435,12 +447,12 @@
         <input class="fijo-input name" id="fijo-name" placeholder="Nombre..." type="text" maxlength="40">
         <input class="fijo-input amount" id="fijo-amount" placeholder="Monto..." type="number">
       </div>
+      <select class="fijo-input" id="fijo-cat" style="width:100%;margin-bottom:10px"></select>
       <button class="add-fijo-btn" id="add-fijo-btn" onclick="addFijo()">+ Agregar</button>
     </div>
   </div>
 
   <div id="variable-section" style="display:none">
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">Categorías y presupuesto mensual</div>
     <div id="budget-cat-list"></div>
     <div class="add-cat-form">
       <div class="add-cat-form-title">Nueva categoría</div>
@@ -511,7 +523,7 @@
   <div class="settings-section">
     <div class="settings-title">Apps Script</div>
     <div class="settings-hint" style="background:var(--surface);padding:12px;border-radius:8px;font-size:10px;line-height:1.8;color:#888;word-break:break-all;">
-function doPost(e) {<br>&nbsp;&nbsp;var data = JSON.parse(e.postData.contents);<br>&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>&nbsp;&nbsp;var sheet = ss.getSheetByName("Gastos") || ss.insertSheet("Gastos");<br>&nbsp;&nbsp;if (sheet.getLastRow() === 0) { sheet.appendRow(["Fecha","Hora","Monto","Categoría","Nota","Tipo"]); }<br>&nbsp;&nbsp;sheet.appendRow([data.fecha,data.hora,data.monto,data.categoria,data.nota,data.tipo]);<br>&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);<br>}<br>function doGet(e) {<br>&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>&nbsp;&nbsp;var sheet = ss.getSheetByName("Gastos");<br>&nbsp;&nbsp;if (!sheet) return ContentService.createTextOutput(JSON.stringify({rows:[]})).setMimeType(ContentService.MimeType.JSON);<br>&nbsp;&nbsp;var data = sheet.getDataRange().getValues();<br>&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({rows:data})).setMimeType(ContentService.MimeType.JSON);<br>}
+function doPost(e) {<br>&nbsp;&nbsp;var data = JSON.parse(e.postData.contents);<br>&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>&nbsp;&nbsp;var sheet = ss.getSheetByName("Gastos") || ss.insertSheet("Gastos");<br>&nbsp;&nbsp;if (data.action === "delete") {<br>&nbsp;&nbsp;&nbsp;&nbsp;var vals = sheet.getDataRange().getValues();<br>&nbsp;&nbsp;&nbsp;&nbsp;for (var i = vals.length - 1; i >= 1; i--) {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (String(vals[i][6]) === String(data.id)) { sheet.deleteRow(i + 1); break; }<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);<br>&nbsp;&nbsp;}<br>&nbsp;&nbsp;if (sheet.getLastRow() === 0) { sheet.appendRow(["Fecha","Hora","Monto","Categoría","Nota","Tipo","ID"]); }<br>&nbsp;&nbsp;sheet.appendRow([data.fecha,data.hora,data.monto,data.categoria,data.nota,data.tipo,data.id]);<br>&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);<br>}<br>function doGet(e) {<br>&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>&nbsp;&nbsp;var sheet = ss.getSheetByName("Gastos");<br>&nbsp;&nbsp;if (!sheet) return ContentService.createTextOutput(JSON.stringify({rows:[]})).setMimeType(ContentService.MimeType.JSON);<br>&nbsp;&nbsp;var data = sheet.getDataRange().getValues();<br>&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({rows:data})).setMimeType(ContentService.MimeType.JSON);<br>}
     </div>
   </div>
 </div>
@@ -543,14 +555,14 @@ const DEFAULT_CATEGORIES = [
 
 const DEFAULT_FIJOS = {
   q1: [
-    { id:'f1', name:'Arriendo', amount:2300000 },
-    { id:'f2', name:'Tigo (celular)', amount:40008 },
-    { id:'f3', name:'Pensión voluntaria', amount:173000 },
+    { id:'f1', name:'Arriendo', amount:2300000, catId:'servicios' },
+    { id:'f2', name:'Tigo (celular)', amount:40008, catId:'servicios' },
+    { id:'f3', name:'Pensión voluntaria', amount:173000, catId:'otro' },
   ],
   q2: [
-    { id:'f4', name:'Tarjeta de crédito', amount:1299950 },
-    { id:'f5', name:'Nu / Crédito', amount:315360 },
-    { id:'f6', name:'Servicios Bello', amount:192474 },
+    { id:'f4', name:'Tarjeta de crédito', amount:1299950, catId:'servicios' },
+    { id:'f5', name:'Nu / Crédito', amount:315360, catId:'servicios' },
+    { id:'f6', name:'Servicios Bello', amount:192474, catId:'servicios' },
   ],
 };
 
@@ -581,6 +593,7 @@ function init() {
   renderCats();
   if (sheetsUrl) document.getElementById('sheets-url').value = sheetsUrl;
   renderEmojiGrid();
+  populateFijoCatSelect();
 }
 
 // ── CATEGORIES ──
@@ -643,17 +656,44 @@ function saveBudgets() {
   showToast('✓ Presupuesto guardado');
 }
 
+function calcFijosByCat() {
+  // Sum all fijos (q1+q2) grouped by catId
+  const totals = {};
+  ['q1','q2'].forEach(q => {
+    (fijos[q]||[]).forEach(f => {
+      if (f.catId) totals[f.catId] = (totals[f.catId]||0) + f.amount;
+    });
+  });
+  return totals;
+}
+
 function renderBudgetCatList() {
   const container = document.getElementById('budget-cat-list');
-  container.innerHTML = categories.map(c => `
+  const fijosByCat = calcFijosByCat();
+
+  // Header row
+  const header = `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:2px solid var(--border);margin-bottom:4px">
+      <div style="width:28px;flex-shrink:0"></div>
+      <div style="flex:1;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Categoría</div>
+      <div style="width:100px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;text-align:right">Fijos</div>
+      <div style="width:108px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;text-align:right">Máximo</div>
+      <div style="width:24px;flex-shrink:0"></div>
+    </div>`;
+
+  const rows = categories.map(c => `
     <div class="budget-cat-row" data-catid="${c.id}">
       <div class="budget-cat-icon" title="Cambiar ícono">${c.icon}</div>
       <input class="budget-cat-name-input" value="${c.label}">
+      <div style="width:100px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0">
+        ${fijosByCat[c.id] ? formatMoney(fijosByCat[c.id]) : '—'}
+      </div>
       <input class="budget-cat-amount-input" type="number" value="${c.budget||0}" placeholder="0">
       <button class="budget-cat-del" type="button">✕</button>
     </div>`).join('');
 
-  // Attach listeners after render — avoids issues with special chars in IDs
+  container.innerHTML = header + rows;
+
   container.querySelectorAll('.budget-cat-row').forEach(row => {
     const id = row.dataset.catid;
     row.querySelector('.budget-cat-icon').addEventListener('click', () => openEmojiPicker(id));
@@ -733,7 +773,14 @@ function checkSubmit() {
 }
 
 // ── SUBMIT ──
+let isSubmitting = false;
+
 async function submitEntry() {
+  if (isSubmitting) return;
+  isSubmitting = true;
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+
   const amount = parseInt(amountStr);
   const now = new Date();
   let catObj;
@@ -755,7 +802,7 @@ async function submitEntry() {
 
   if (sheetsUrl) {
     try {
-      await fetch(sheetsUrl, { method:'POST', body:JSON.stringify({ fecha:entry.fecha, hora:entry.hora, monto:entry.monto, categoria:catObj.label, nota:entry.nota, tipo:entryType }) });
+      await fetch(sheetsUrl, { method:'POST', body:JSON.stringify({ fecha:entry.fecha, hora:entry.hora, monto:entry.monto, categoria:catObj.label, nota:entry.nota, tipo:entryType, id:entry.id }) });
       showToast('✓ Guardado en Sheets');
     } catch { showToast('✓ Guardado local'); }
   } else {
@@ -766,9 +813,10 @@ async function submitEntry() {
   document.getElementById('note-input').value = '';
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
   setType('gasto'); updateDisplay();
-  // Refresh saldo hero if visible
   renderSaldoHero();
   if (navigator.vibrate) navigator.vibrate(50);
+  isSubmitting = false;
+  // checkSubmit will re-enable once user enters new amount+cat
 }
 
 // ── CSV IMPORT ──
@@ -936,9 +984,14 @@ function handleTxClick(e, id) {
   openCatModal(id);
 }
 
-function deleteEntry(id) {
+async function deleteEntry(id) {
   gastos = gastos.filter(g => String(g.id) !== String(id));
   localStorage.setItem('gastos_pablo', JSON.stringify(gastos));
+  if (sheetsUrl) {
+    try {
+      await fetch(sheetsUrl, { method:'POST', body:JSON.stringify({ action:'delete', id:String(id) }) });
+    } catch { /* falla silencioso, local ya borrado */ }
+  }
   showToast('Eliminado', true);
   renderHistory();
 }
@@ -1048,11 +1101,13 @@ function renderFijos() {
   const list = document.getElementById('fijos-list');
   list.innerHTML = items.length ? items.map(f => {
     const paid = !!checks[f.id];
+    const cat = categories.find(c => c.id === f.catId);
+    const catTag = cat ? `<span class="fijo-cat-tag">${cat.icon} ${cat.label}</span>` : '';
     return `<div class="fijo-item">
       <div class="fijo-check ${paid?'checked':''}" onclick="toggleFijo('${f.id}')">${paid?'✓':''}</div>
       <div class="fijo-info">
         <div class="fijo-name ${paid?'paid':''}">${f.name}</div>
-        <div class="fijo-amount">${formatMoney(f.amount)}</div>
+        <div class="fijo-amount">${formatMoney(f.amount)} ${catTag}</div>
       </div>
       <div class="fijo-actions">
         <button class="fijo-action-btn" onclick="editFijo('${f.id}')">✏️</button>
@@ -1060,6 +1115,16 @@ function renderFijos() {
       </div>
     </div>`;
   }).join('') : '<div style="text-align:center;color:var(--muted);padding:24px 0;font-family:DM Mono,monospace;font-size:12px;">Sin gastos fijos aquí</div>';
+  // Populate category select
+  populateFijoCatSelect();
+}
+
+function populateFijoCatSelect() {
+  const sel = document.getElementById('fijo-cat');
+  if (!sel) return;
+  sel.innerHTML = categories.map(c =>
+    `<option value="${c.id}">${c.icon} ${c.label}</option>`
+  ).join('');
 }
 
 function toggleFijo(id) {
@@ -1074,16 +1139,17 @@ function toggleFijo(id) {
 function addFijo() {
   const name = document.getElementById('fijo-name').value.trim();
   const amount = parseInt(document.getElementById('fijo-amount').value||'0');
+  const catId = document.getElementById('fijo-cat')?.value || 'otro';
   if (!name||!amount) { showToast('Ingresa nombre y monto',true); return; }
   const qKey = `q${currentBudgetTab}`;
   if (!fijos[qKey]) fijos[qKey]=[];
   if (editingFijoId) {
     const item = fijos[qKey].find(f=>f.id===editingFijoId);
-    if (item) { item.name=name; item.amount=amount; }
+    if (item) { item.name=name; item.amount=amount; item.catId=catId; }
     editingFijoId=null;
     document.getElementById('add-fijo-btn').textContent='+ Agregar';
   } else {
-    fijos[qKey].push({id:'f'+Date.now(), name, amount});
+    fijos[qKey].push({id:'f'+Date.now(), name, amount, catId});
   }
   localStorage.setItem('fijos_pablo', JSON.stringify(fijos));
   document.getElementById('fijo-name').value='';
@@ -1096,6 +1162,8 @@ function editFijo(id) {
   if (!item) return;
   document.getElementById('fijo-name').value=item.name;
   document.getElementById('fijo-amount').value=item.amount;
+  const sel = document.getElementById('fijo-cat');
+  if (sel && item.catId) sel.value = item.catId;
   editingFijoId=id;
   document.getElementById('add-fijo-btn').textContent='✓ Guardar cambios';
   document.getElementById('fijo-name').focus();
